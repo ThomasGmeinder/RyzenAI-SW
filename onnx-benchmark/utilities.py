@@ -8,7 +8,10 @@ import shutil
 import argparse
 import subprocess
 import time
-import importlib_metadata
+try:
+    from importlib import metadata as importlib_metadata
+except ImportError:
+    import importlib_metadata
 import sys
 import json
 import platform
