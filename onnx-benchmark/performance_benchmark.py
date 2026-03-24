@@ -162,9 +162,9 @@ class Benchmark:
             ggprint(f"Provider = {self.args.execution_provider}")
             migraphx_options = {
                 "device_id": str(getattr(self.args, "migraphx_device_id", 0)),
-                "migraphx_fp16_enable": "1" if getattr(self.args, "migraphx_dtype", "fp32") == "fp16" else "0",
-                "migraphx_int8_enable": "1" if getattr(self.args, "migraphx_dtype", "fp32") == "int8" else "0",
-                "migraphx_exhaustive_tune": "1" if getattr(self.args, "migraphx_exhaustive_tune", False) else "0",
+                "migraphx_fp16_enable": "True" if getattr(self.args, "migraphx_dtype", "fp32") == "fp16" else "False",
+                "migraphx_int8_enable": "True" if getattr(self.args, "migraphx_dtype", "fp32") == "int8" else "False",
+                "migraphx_exhaustive_tune": "True" if getattr(self.args, "migraphx_exhaustive_tune", False) else "False",
             }
             providers = [("MIGraphXExecutionProvider", migraphx_options)]
             self.args.threads = 1
