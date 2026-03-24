@@ -21,7 +21,8 @@ Author: AMD-Xilinx
   - [1.1 Notes for release 21](#11-notes-for-release-21)
   - [1.2 Quick start with the GUI](#12-quick-start-with-the-gui)
 - [2 Setup](#2-setup)
-  - [2.1 Install Procedure](#21-install-procedure)
+  - [2.1 Windows Install Procedure](#21-windows-install-procedure)
+  - [2.2 Linux Install Procedure (MIGraphX)](#22-linux-install-procedure-migraphx)
 - [3 Performance Measurement](#3-performance-measurement)
   - [3.1 Measurement Report](#31-measurement-report)
   - [3.2 Example Usage](#32-example-usage)
@@ -77,7 +78,7 @@ The GUI groups options into two tabs so you can dial in the right amount of cont
 Each time you start a run, the GUI prints the equivalent CLI command so you can copy it into scripts once you settle on a configuration.
 
 # 2 <a name='Setup'></a>Setup
-##  2.1 <a name='InstallProcedure'></a>Install Procedure
+##  2.1 <a name='WindowsInstallProcedure'></a>Windows Install Procedure
 Prerequisite: Install [Anaconda](https://docs.anaconda.com/free/anaconda/install/index.html) or Miniconda.
 
 1. Run the RyzenAI 1.6.0 installer.
@@ -90,6 +91,18 @@ conda activate ryzen-ai-1.6.0
 5. When the `ryzen-ai-1.6.0` environment is active, complete the setup:
 ```bash
 python -m pip install -r requirements-win.txt
+```
+
+## 2.2 <a name='LinuxInstallProcedureMIGraphX'></a>Linux Install Procedure (MIGraphX)
+
+Prerequisite: [ROCm 7.x](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/) installed and working (`rocm-smi` should list your GPU).
+
+```bash
+python3 -m venv migraphx-venv
+source migraphx-venv/bin/activate
+pip install onnxruntime-migraphx -f https://repo.radeon.com/rocm/manylinux/rocm-rel-7.2/
+pip install -r requirements-linux.txt
+python -c "import onnxruntime; print(onnxruntime.get_available_providers())"  # should list MIGraphXExecutionProvider
 ```
 
 # 3 Performance Measurement
@@ -139,7 +152,7 @@ Use `--model_path` to target a specific file or directory explicitly.
 ###  3.2.6 <a name='PerformanceontheiGPUwithMIGraphX'></a>Performance on the iGPU with MIGraphX
 Run inference on the integrated GPU using AMD's MIGraphX execution provider (requires ROCm and MIGraphX):
 ```bash
-python performance_benchmark.py --model_path ./models/resnet50/resnet50_fp32.onnx --execution_provider iGPU_MIGraphX --num 100 --timelimit 10
+python performance_benchmark.py --model resnet50 --execution_provider iGPU_MIGraphX --num 100 --timelimit 10
 ```
 Enable FP16 precision for faster inference:
 ```bash
