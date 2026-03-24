@@ -32,10 +32,13 @@ import urllib.request
 from PIL import Image
 from typing import Protocol, Any, Dict, List, Mapping, Sequence, Tuple, Union, Optional
 
-#import quark.onnx.quantization.config.custom_config as customconfig
-from onnxruntime.quantization.calibrate import CalibrationDataReader
-from quark.onnx.quantization.config import Config, get_default_config
-from quark.onnx import ModelQuantizer
+try:
+    from onnxruntime.quantization.calibrate import CalibrationDataReader
+    from quark.onnx.quantization.config import Config, get_default_config
+    from quark.onnx import ModelQuantizer
+    _HAS_QUARK = True
+except ImportError:
+    _HAS_QUARK = False
 
 class DynamicInputError(RuntimeError):
     """Raised when a model contains unsupported dynamic input dimensions."""
