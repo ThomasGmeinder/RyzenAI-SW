@@ -64,17 +64,17 @@ class Benchmark:
         self.TABLEW = 51
 
     def run(self):
-        # set environment variables
-        set_environment_variable(self.apu_type)
+        if self.args.execution_provider == "VitisAIEP":
+            set_environment_variable(self.apu_type)
 
-        self.config_file = _find_vaip_config_from_env()
-        if not self.config_file:
-            install_dir = os.environ.get("RYZEN_AI_INSTALLATION_PATH", "")
-            fallback = os.path.join(install_dir, "voe-4.0-win_amd64", "vaip_config.json") if install_dir else ""
-            if fallback and os.path.isfile(fallback):
-                self.config_file = fallback
-            else:
-                ggprint("[WARN] vaip_config.json not found under installation path.")
+            self.config_file = _find_vaip_config_from_env()
+            if not self.config_file:
+                install_dir = os.environ.get("RYZEN_AI_INSTALLATION_PATH", "")
+                fallback = os.path.join(install_dir, "voe-4.0-win_amd64", "vaip_config.json") if install_dir else ""
+                if fallback and os.path.isfile(fallback):
+                    self.config_file = fallback
+                else:
+                    ggprint("[WARN] vaip_config.json not found under installation path.")
 
         # environment control
         check_env(self.release, self.args)

@@ -519,13 +519,15 @@ def check_env(release, args):
     )
     ggprint("Preliminary environment check")
 
-    required_vars = [
-        "RYZEN_AI_INSTALLATION_PATH",
-    ]
-    missing_vars = [var for var in required_vars if os.getenv(var) is None]
-    if missing_vars:
-        ggprint(f"Error: Missing environment variables: {', '.join(missing_vars)}")
-        sys.exit(1)
+    is_windows = platform.system() == "Windows"
+    ep = getattr(args, "execution_provider", "CPU")
+
+    if ep in ("VitisAIEP",):
+        required_vars = ["RYZEN_AI_INSTALLATION_PATH"]
+        missing_vars = [var for var in required_vars if os.getenv(var) is None]
+        if missing_vars:
+            ggprint(f"Error: Missing environment variables: {', '.join(missing_vars)}")
+            sys.exit(1)
 
     if (
         sys.version_info.major == 3
@@ -545,62 +547,55 @@ def check_env(release, args):
             )
         )
 
-    package_name = "onnxruntime-vitisai"
-    version = check_package_version(package_name)
-    fields = version.split('.')
-    if fields[0] == "1" and fields[1] in ["21","22","23"]:
-        data.append(
-            (f"{package_name} version: {version}", Colors.GREEN + "OK" + Colors.RESET)
-        )
-    else:
-        data.append(
-            (
-                f"{package_name} version: {version}" + version,
-                Colors.RED + f"please update {package_name}" + Colors.RESET,
+    if ep == "VitisAIEP":
+        package_name = "onnxruntime-vitisai"
+        version = check_package_version(package_name)
+        fields = version.split('.')
+        if fields[0] == "1" and fields[1] in ["21","22","23"]:
+            data.append(
+                (f"{package_name} version: {version}", Colors.GREEN + "OK" + Colors.RESET)
             )
-        )
+        else:
+            data.append(
+                (
+                    f"{package_name} version: {version}" + version,
+                    Colors.RED + f"please update {package_name}" + Colors.RESET,
+                )
+            )
 
-    package_name = "voe"
-    version = check_package_version(package_name)
-    fields = version.split('.')
-    if fields[0] == "1" and (fields[1] == "6"):
-        data.append(
-            (f"{package_name} version: {version}", Colors.GREEN + "OK" + Colors.RESET)
-        )
-    else:
-        data.append(
-            (f"{package_name} version: {version}", Colors.RED + f"please update {package_name}" + Colors.RESET)
-        )
+        package_name = "voe"
+        version = check_package_version(package_name)
+        fields = version.split('.')
+        if fields[0] == "1" and (fields[1] == "6"):
+            data.append(
+                (f"{package_name} version: {version}", Colors.GREEN + "OK" + Colors.RESET)
+            )
+        else:
+            data.append(
+                (f"{package_name} version: {version}", Colors.RED + f"please update {package_name}" + Colors.RESET)
+            )
 
-    # AGM
-    package_name = "AGM"
-    # Get the path from the environment variable
-    agm_path = os.getenv("AGM_INSTALLATION_PATH", r"C:\Program Files\AMD Graphics Manager")
-    agmexe_path = os.path.join(agm_path, "AMDGraphicsManager.exe")
+    if is_windows:
+        agm_path = os.getenv("AGM_INSTALLATION_PATH", r"C:\Program Files\AMD Graphics Manager")
+        agmexe_path = os.path.join(agm_path, "AMDGraphicsManager.exe")
+        agm_version = get_file_version(agmexe_path)
+        if agm_version:
+            data.append(
+                (f"AGM version: {agm_version}", Colors.GREEN + "OK" + Colors.RESET)
+            )
 
-    agm_version = get_file_version(agmexe_path)
-    if agm_version:
-        data.append(
-            (f"{package_name} version: {agm_version}", Colors.GREEN + "OK" + Colors.RESET)
-        )
-
-    # HWINFO
-    package_name = "HWINFO"
-    # Get the path from the environment variable
-    hwinfo_path = os.getenv("HWINFO_INSTALLATION_PATH", r"C:\Program Files\HWiNFO64")
-    hwinfoexe_path = os.path.join(hwinfo_path, "HWiNFO64.EXE")
-
-    hwinfo_version = get_file_version(hwinfoexe_path)
-    if hwinfo_version:
-        data.append(
-            (f"{package_name} version: {hwinfo_version}", Colors.GREEN + "OK" + Colors.RESET)
-        )
+        hwinfo_path = os.getenv("HWINFO_INSTALLATION_PATH", r"C:\Program Files\HWiNFO64")
+        hwinfoexe_path = os.path.join(hwinfo_path, "HWiNFO64.EXE")
+        hwinfo_version = get_file_version(hwinfoexe_path)
+        if hwinfo_version:
+            data.append(
+                (f"HWINFO version: {hwinfo_version}", Colors.GREEN + "OK" + Colors.RESET)
+            )
 
     max_width = max(len(row[0]) for row in data)
 
     for row in data:
         column1, column2 = row
-        # Left-align the text in the first column and pad with spaces
         formatted_column1 = column1.ljust(max_width)
         ggprint(f"{formatted_column1} {column2}")
     
@@ -1228,17 +1223,29 @@ def meas_init(args, release, total_throughput, average_latency, xclbin_path, mod
         "Swap_Memory": f"{swap_info.free / (1024 ** 3)} GB",
     }
 
-    powershell_path = os.path.join(os.environ['SystemRoot'], 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
-    if os.path.exists(powershell_path):
-        try:
-            driver_release=get_driver_release_number("NPU Compute Accelerator Device")
-        except subprocess.CalledProcessError:
-            ggprint("Error: AMD NPU driver not found or PowerShell command failed.")
-            driver_release = "Unknown"
-       
+    driver_release = "Unknown"
+    if platform.system() == "Windows":
+        powershell_path = os.path.join(os.environ.get('SystemRoot', ''), 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
+        if os.path.exists(powershell_path):
+            try:
+                driver_release = get_driver_release_number("NPU Compute Accelerator Device")
+            except subprocess.CalledProcessError:
+                ggprint("Error: AMD NPU driver not found or PowerShell command failed.")
+        else:
+            ggprint("Warning: Could not execute a Powershell command. Please manually verify that the AMD NPU Driver exists")
     else:
-        ggprint("Warning: Could not execute a Powershell command. Please manually verify that the AMD NPU Driver exists")       
-        driver_release = "Unknown"
+        try:
+            result = subprocess.run(
+                ['rocm-smi', '--showdriverversion'],
+                capture_output=True, text=True, timeout=5,
+            )
+            if result.returncode == 0:
+                for line in result.stdout.splitlines():
+                    if 'Driver' in line and ':' in line:
+                        driver_release = line.split(':', 1)[1].strip()
+                        break
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            ggprint("Warning: rocm-smi not found. GPU driver version unknown.")
 
     measurement["system"]["driver"] = {}
     measurement["system"]["driver"]["npu"] = driver_release
@@ -1325,11 +1332,11 @@ def parse_cpp_res(file_path):
 
 def parse_args(apu_type):
 
-    install_dir = os.environ['RYZEN_AI_INSTALLATION_PATH']    
-    config_file = os.path.join(install_dir, 'voe-4.0-win_amd64', 'vaip_config.json')
+    install_dir = os.environ.get('RYZEN_AI_INSTALLATION_PATH', '')
+    config_file = os.path.join(install_dir, 'voe-4.0-win_amd64', 'vaip_config.json') if install_dir else ''
 
     defaults = {
-        'calib': ".\\images",
+        'calib': ".\\images" if platform.system() == "Windows" else "./images",
         'config': config_file,
         'core': "STX_1x4",
         'execution_provider': 'CPU',
@@ -1380,7 +1387,14 @@ def parse_args(apu_type):
             choices=["PHX_4x4"],
             help="Which core to use with PHOENIX silicon. Default=PHX_4x4",
         )
-    
+    else:
+        parser.add_argument(
+            "--core",
+            default="",
+            type=str,
+            help="NPU core (not applicable for iGPU_MIGraphX/CPU-only)",
+        )
+
     parser.add_argument(
         "--cpp",
         type=str,
@@ -2045,11 +2059,21 @@ class ImageDataReader(CalibrationDataReader):
         self.enum_data = None
 
 def get_apu_info():
-    # Run pnputil as a subprocess to enumerate PCI devices
+    if platform.system() != 'Windows':
+        try:
+            result = subprocess.run(
+                ['rocm-smi', '--showproductname'],
+                capture_output=True, text=True, timeout=5,
+            )
+            if result.returncode == 0 and 'AMD' in result.stdout:
+                return 'ROCm'
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pass
+        return ''
+
     command = r'pnputil /enum-devices /bus PCI /deviceids '
     process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = process.communicate()
-    # Check for supported Hardware IDs
     apu_type = ''
     if 'PCI\\VEN_1022&DEV_1502&REV_00' in stdout.decode(): apu_type = 'PHX/HPT'
     if 'PCI\\VEN_1022&DEV_17F0&REV_00' in stdout.decode(): apu_type = 'STX'
