@@ -575,6 +575,18 @@ def check_env(release, args):
                 (f"{package_name} version: {version}", Colors.RED + f"please update {package_name}" + Colors.RESET)
             )
 
+    if ep == "iGPU_MIGraphX":
+        import onnxruntime as _ort
+        available = _ort.get_available_providers()
+        if "MIGraphXExecutionProvider" in available:
+            data.append(
+                ("MIGraphXExecutionProvider", Colors.GREEN + "Available" + Colors.RESET)
+            )
+        else:
+            data.append(
+                ("MIGraphXExecutionProvider", Colors.RED + "NOT available (check ROCm/MIGraphX install)" + Colors.RESET)
+            )
+
     if is_windows:
         agm_path = os.getenv("AGM_INSTALLATION_PATH", r"C:\Program Files\AMD Graphics Manager")
         agmexe_path = os.path.join(agm_path, "AMDGraphicsManager.exe")
@@ -1408,8 +1420,27 @@ def parse_args(apu_type):
         "-e",
         type=str,
         default=defaults['execution_provider'],
-        choices=["CPU", "VitisAIEP", "iGPU", "dGPU"],
+        choices=["CPU", "VitisAIEP", "iGPU", "iGPU_MIGraphX", "dGPU"],
         help="Execution Provider selection. Default=CPU",
+    )
+
+    parser.add_argument(
+        "--migraphx_dtype",
+        type=str,
+        default="fp32",
+        choices=["fp32", "fp16", "int8"],
+        help="MIGraphX precision mode (default: fp32)",
+    )
+    parser.add_argument(
+        "--migraphx_device_id",
+        type=int,
+        default=0,
+        help="MIGraphX GPU device index (default: 0)",
+    )
+    parser.add_argument(
+        "--migraphx_exhaustive_tune",
+        action="store_true",
+        help="Enable MIGraphX exhaustive kernel tuning (slower compile, faster inference)",
     )
 
     parser.add_argument(

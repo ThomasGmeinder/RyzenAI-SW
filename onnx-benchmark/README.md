@@ -1,4 +1,4 @@
-﻿<!--
+<!--
 Copyright (C) 2023 Advanced Micro Devices, Inc. All rights reserved.
 SPDX-License-Identifier: MIT
 
@@ -30,8 +30,9 @@ Author: AMD-Xilinx
     - [3.2.3 Performance utilizing NPU and model quantization](#323-performance-utilizing-npu-and-model-quantization)
     - [3.2.4 NPU and model compiled with VAIML](#324-npu-and-model-compiled-with-vaiml)
     - [3.2.5 Automatic model download](#325-automatic-model-download)
-    - [3.2.6 Performance with a single CPU instance at 30 fps](#326-performance-with-a-single-cpu-instance-at-30-fps)
-    - [3.2.7 Parameter file](#327-parameter-file)
+    - [3.2.6 Performance on the iGPU with MIGraphX](#326-performance-on-the-igpu-with-migraphx)
+    - [3.2.7 Performance with a single CPU instance at 30 fps](#327-performance-with-a-single-cpu-instance-at-30-fps)
+    - [3.2.8 Parameter file](#328-parameter-file)
 - [4 Power Analysis](#4-power-analysis)
 
 
@@ -58,6 +59,8 @@ Note: Primary validation was performed on the Ryzen processor code-named "STRIX"
 * For FP32 models with the VitisAI execution provider, you can quantize and run on VitisAIEP or keep FP32 and run on the CPU automatically
 * Automatic model resolution: known selectors such as `resnet50` or `mobilenetv2` are downloaded into `./models/` on demand. Use `--model resnet50`, or point to an existing ONNX file with `--model_path <path/to/model>.onnx`.
 * Added `--force_batch` (default 1) to rewrite dynamic batch dimensions to 1, improving NPU execution and avoiding shape mismatches
+* Added `iGPU_MIGraphX` execution provider for AMD iGPU inference via ROCm/MIGraphX, with FP16/INT8 precision modes and exhaustive tuning
+* Cross-platform support: the tool now runs on Linux (MIGraphX, CPU) in addition to Windows
 
 ## 1.2 <a name='QuickstartwiththeGUI'></a>Quick start with the GUI
 The fastest way to explore the benchmark is through the graphical launcher shipped as `benchmark_gui.py`. It surfaces the most common options and reduces the need to memorize CLI flags while you learn the tool.
@@ -133,13 +136,39 @@ python performance_benchmark.py --model resnet50 --execution_provider CPU --num 
 ```
 Use `--model_path` to target a specific file or directory explicitly.
 
-###  3.2.6 <a name='PerformancewithasingleCPUinstanceat30fps'></a>Performance with a single CPU instance at 30 fps
+###  3.2.6 <a name='PerformanceontheiGPUwithMIGraphX'></a>Performance on the iGPU with MIGraphX
+Run inference on the integrated GPU using AMD's MIGraphX execution provider (requires ROCm and MIGraphX):
+```bash
+python performance_benchmark.py --model_path ./models/resnet50/resnet50_fp32.onnx --execution_provider iGPU_MIGraphX --num 100 --timelimit 10
+```
+Enable FP16 precision for faster inference:
+```bash
+python performance_benchmark.py --model_path ./models/resnet50/resnet50_fp32.onnx --execution_provider iGPU_MIGraphX --migraphx_dtype fp16 --num 100 --timelimit 10
+```
+Enable INT8 precision with exhaustive kernel tuning:
+```bash
+python performance_benchmark.py --model_path ./models/resnet50/resnet50_fp32.onnx --execution_provider iGPU_MIGraphX --migraphx_dtype int8 --migraphx_exhaustive_tune --num 100 --timelimit 10
+```
+MIGraphX-specific options:
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--migraphx_dtype` | Precision mode: `fp32`, `fp16`, or `int8` | `fp32` |
+| `--migraphx_device_id` | GPU device index | `0` |
+| `--migraphx_exhaustive_tune` | Exhaustive kernel tuning (slower compile, faster inference) | off |
+
+**Linux setup:** Install ROCm and `onnxruntime-rocm` (or build ONNX Runtime with MIGraphX support). Verify that `MIGraphXExecutionProvider` is available:
+```python
+import onnxruntime
+print(onnxruntime.get_available_providers())
+```
+
+###  3.2.7 <a name='PerformancewithasingleCPUinstanceat30fps'></a>Performance with a single CPU instance at 30 fps
 You can set a minimum latency with `--min_interval`. For example, a delay of 0.033 seconds simulates live video at 30 frames per second. Combine this with multithreading to sustain the target frame rate, even if latency exceeds 33 ms.
 ```bash
 python performance_benchmark.py --model_path .\models\resnet50\resnet50_fp32.onnx -n 100 -e CPU --min_interval 0.033
 ```
 
-###  3.2.7 <a name='Parameterfile'></a>Parameter file
+###  3.2.8 <a name='Parameterfile'></a>Parameter file
 Supplying parameters through a JSON file makes experiments reproducible. The JSON overrides all other options. The following example focuses on low latency or high throughput depending on the configuration in the file:
 ```bash
 python performance_benchmark.py --json ./test/STX_resnet50_low_latency.json

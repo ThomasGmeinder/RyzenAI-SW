@@ -158,6 +158,17 @@ class Benchmark:
             self.args.threads = 1  # iGPU does not take advantage of async multi-threading
             ggprint("Check with Task Manager which GPU is used!")
             self.session = rt.InferenceSession(self.args.model_path, so, providers=providers)
+        elif self.args.execution_provider == "iGPU_MIGraphX":
+            ggprint(f"Provider = {self.args.execution_provider}")
+            migraphx_options = {
+                "device_id": str(getattr(self.args, "migraphx_device_id", 0)),
+                "migraphx_fp16_enable": "1" if getattr(self.args, "migraphx_dtype", "fp32") == "fp16" else "0",
+                "migraphx_int8_enable": "1" if getattr(self.args, "migraphx_dtype", "fp32") == "int8" else "0",
+                "migraphx_exhaustive_tune": "1" if getattr(self.args, "migraphx_exhaustive_tune", False) else "0",
+            }
+            providers = [("MIGraphXExecutionProvider", migraphx_options)]
+            self.args.threads = 1
+            self.session = rt.InferenceSession(self.args.model_path, so, providers=providers)
         elif self.args.execution_provider == "dGPU":
             ggprint(f"Provider = {self.args.execution_provider}")
             # providers = ['DmlExecutionProvider', {'device_id':1}]

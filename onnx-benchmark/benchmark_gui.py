@@ -1,4 +1,4 @@
-﻿from typing import List
+from typing import List
 import os
 import shlex
 import subprocess
@@ -301,7 +301,7 @@ runtime_basic_form = FormBuilder(runtime_basic_frame)
 
 provider_label, provider_combo, provider_var = runtime_basic_form.add_combobox(
     "Execution provider (--execution_provider)",
-    ["CPU", "VitisAIEP", "iGPU", "dGPU"],
+    ["CPU", "VitisAIEP", "iGPU", "iGPU_MIGraphX", "dGPU"],
     default="CPU",
 )
 register_manual_field(
