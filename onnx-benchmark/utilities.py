@@ -1286,20 +1286,23 @@ def meas_init(args, release, total_throughput, average_latency, xclbin_path, mod
             for release in releases
         }
     
-    conda_list = ""
-    try:
-        conda_list = subprocess.check_output("conda list", shell=True, text=True)
-    except subprocess.CalledProcessError as e:
-        print(f"Error: {e}")
     package_info = {}
-    # Parse the output to extract package names and versions
-    lines = conda_list.strip().split("\n")
-    for line in lines[3:]:  # Skip the first 3 lines which contain header information
-        parts = re.split(r"\s+", line.strip())
-        if len(parts) >= 2:
-            package_name = parts[0]
-            package_version = parts[1]
-            package_info[package_name] = package_version
+    try:
+        conda_list = subprocess.check_output("conda list", shell=True, text=True, stderr=subprocess.DEVNULL)
+        lines = conda_list.strip().split("\n")
+        for line in lines[3:]:
+            parts = re.split(r"\s+", line.strip())
+            if len(parts) >= 2:
+                package_info[parts[0]] = parts[1]
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        try:
+            pip_list = subprocess.check_output("pip list --format=freeze", shell=True, text=True, stderr=subprocess.DEVNULL)
+            for line in pip_list.strip().split("\n"):
+                if "==" in line:
+                    name, version = line.split("==", 1)
+                    package_info[name.strip()] = version.strip()
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            pass
     measurement["environment"]["packages"] = package_info
 
     if args.execution_provider == "VitisAIEP":
